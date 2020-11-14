@@ -22,31 +22,29 @@ ENV BASEDIR=/usr/lib/unifi \
     UNIFI_GID=999 \
     UNIFI_UID=999
 
+COPY B42F6819007F00F88E364FD4036A9C25BF357DD4.asc /
+COPY 4A228B2D358A5094178285BE06E85760C0A52C50.asc /
+
 # Install gosu
 # https://github.com/tianon/gosu/blob/master/INSTALL.md
 # This should be integrated with the main run because it duplicates a lot of the steps there
 # but for now while shoehorning gosu in it is seperate
 RUN set -ex \
     && fetchDeps=' \
-        ca-certificates \
-        dirmngr \
-        gpg \
-        wget \
+    ca-certificates \
+    dirmngr \
+    gpg \
+    gpg-agent \
+    wget \
     ' \
     && apt-get update \
     && apt-get install -y --no-install-recommends $fetchDeps \
     && dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')" \
     && wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch" \
     && wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc" \
-# verify the signature
+    # verify the signature
     && export GNUPGHOME="$(mktemp -d)" \
-    && for server in $(shuf -e ha.pool.sks-keyservers.net \
-                            hkp://p80.pool.sks-keyservers.net:80 \
-                            keyserver.ubuntu.com \
-                            hkp://keyserver.ubuntu.com:80 \
-                            pool.sks-keyservers.net) ; do \
-        gpg --keyserver "$server" --recv-keys B42F6819007F00F88E364FD4036A9C25BF357DD4 && break || : ; \
-    done \
+    && gpg --import /B42F6819007F00F88E364FD4036A9C25BF357DD4.asc \
     && gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu \
     && rm -rf "$GNUPGHOME" /usr/local/bin/gosu.asc \
     && chmod +x /usr/local/bin/gosu \
@@ -54,9 +52,9 @@ RUN set -ex \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /usr/unifi \
-     /usr/local/unifi/init.d \
-     /usr/unifi/init.d \
-     /usr/local/docker
+    /usr/local/unifi/init.d \
+    /usr/unifi/init.d \
+    /usr/local/docker
 COPY docker-entrypoint.sh /usr/local/bin/
 COPY docker-healthcheck.sh /usr/local/bin/
 COPY docker-build.sh /usr/local/bin/
@@ -64,17 +62,17 @@ COPY functions /usr/unifi/functions
 COPY import_cert /usr/unifi/init.d/
 COPY pre_build /usr/local/docker/pre_build
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
- && chmod +x /usr/unifi/init.d/import_cert \
- && chmod +x /usr/local/bin/docker-healthcheck.sh \
- && chmod +x /usr/local/bin/docker-build.sh \
- && chmod -R +x /usr/local/docker/pre_build
+    && chmod +x /usr/unifi/init.d/import_cert \
+    && chmod +x /usr/local/bin/docker-healthcheck.sh \
+    && chmod +x /usr/local/bin/docker-build.sh \
+    && chmod -R +x /usr/local/docker/pre_build
 
 # Push installing openjdk-8-jre first, so that the unifi package doesn't pull in openjdk-7-jre as a dependency? Else uncomment and just go with openjdk-7.
 RUN set -ex \
- && mkdir -p /usr/share/man/man1/ \
- && groupadd -r unifi -g $UNIFI_GID \
- && useradd --no-log-init -r -u $UNIFI_UID -g $UNIFI_GID unifi \
- && /usr/local/bin/docker-build.sh "${PKGURL}"
+    && mkdir -p /usr/share/man/man1/ \
+    && groupadd -r unifi -g $UNIFI_GID \
+    && useradd --no-log-init -r -u $UNIFI_UID -g $UNIFI_GID unifi \
+    && /usr/local/bin/docker-build.sh "${PKGURL}"
 
 RUN mkdir -p /unifi && chown unifi:unifi -R /unifi
 
@@ -93,5 +91,5 @@ CMD ["unifi"]
 
 # execute the conroller directly without using the service
 #ENTRYPOINT ["/usr/bin/java", "-Xmx${JVM_MAX_HEAP_SIZE}", "-jar", "/usr/lib/unifi/lib/ace.jar"]
-  # See issue #12 on github: probably want to consider how JSVC handled creating multiple processes, issuing the -stop instraction, etc. Not sure if the above ace.jar class gracefully handles TERM signals.
+# See issue #12 on github: probably want to consider how JSVC handled creating multiple processes, issuing the -stop instraction, etc. Not sure if the above ace.jar class gracefully handles TERM signals.
 #CMD ["start"]

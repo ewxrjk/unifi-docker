@@ -10,20 +10,6 @@ tryfail() {
     (exit $s)
 }
 
-# Try multiple keyservers in case of failure
-addKey() {
-    for server in $(shuf -e ha.pool.sks-keyservers.net \
-        hkp://p80.pool.sks-keyservers.net:80 \
-        keyserver.ubuntu.com \
-        hkp://keyserver.ubuntu.com:80 \
-        pgp.mit.edu) ; do \
-        if apt-key adv --keyserver "$server" --recv "$1"; then
-            exit 0
-        fi
-    done
-    return 1
-}
-
 if [ "x${1}" == "x" ]; then
     echo please pass PKGURL as an environment variable
     exit 0
@@ -41,7 +27,7 @@ apt-get install -qy --no-install-recommends \
     libcap2-bin \
     tzdata
 echo 'deb https://www.ui.com/downloads/unifi/debian stable ubiquiti' | tee /etc/apt/sources.list.d/100-ubnt-unifi.list
-tryfail apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 06E85760C0A52C50
+apt-key add /4A228B2D358A5094178285BE06E85760C0A52C50.asc
 
 if [ -d "/usr/local/docker/pre_build/$(dpkg --print-architecture)" ]; then
     find "/usr/local/docker/pre_build/$(dpkg --print-architecture)" -type f -exec '{}' \;
